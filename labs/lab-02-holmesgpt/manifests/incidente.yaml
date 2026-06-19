@@ -1,0 +1,189 @@
+# ─── Namespace ────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab-holmes
+
+---
+# ─── ConfigMap com configuração errada (variável de ambiente incorreta) ────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: lab-holmes
+data:
+  DATABASE_HOST: "db-service-errado"   # hostname errado propositalmente
+  DATABASE_PORT: "5432"
+  APP_ENV: "production"
+
+---
+# ─── Deployment da aplicação que depende do banco ─────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-web
+  namespace: lab-holmes
+  labels:
+    app: web
+    incidente: conexao-banco
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: busybox:latest
+          command:
+            - sh
+            - -c
+            - |
+              echo "Tentando conectar ao banco: $DATABASE_HOST:$DATABASE_PORT"
+              nc -zw3 $DATABASE_HOST $DATABASE_PORT || \
+                (echo "ERRO: Falha ao conectar ao banco de dados!" && exit 1)
+          envFrom:
+            - configMapRef:
+                name: app-config
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+
+---
+# ─── Banco de dados com nome correto (diferente do que a app espera) ───────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-postgres
+  namespace: lab-holmes
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_PASSWORD
+              value: "senha123"
+            - name: POSTGRES_DB
+              value: "appdb"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+
+---
+# ─── Service do banco com nome correto (diferente do ConfigMap) ───────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-service          # app espera "db-service-errado"
+  namespace: lab-holmes
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+# ─── Service da aplicação web ─────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+  namespace: lab-holmes
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 8080
+
+---
+# ─── Job que falha por falta de permissão (RBAC) ──────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: job-sem-permissao
+  namespace: lab-holmes
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-listagem-pods
+  namespace: lab-holmes
+  labels:
+    incidente: rbac
+spec:
+  template:
+    spec:
+      serviceAccountName: job-sem-permissao
+      restartPolicy: Never
+      containers:
+        - name: kubectl
+          image: bitnami/kubectl:latest
+          command:
+            - kubectl
+            - get
+            - pods
+            - -n
+            - lab-holmes
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+
+---
+# ─── Deployment com recursos insuficientes (Pending por falta de CPU) ─────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-gulosa
+  namespace: lab-holmes
+  labels:
+    incidente: recursos-insuficientes
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gulosa
+  template:
+    metadata:
+      labels:
+        app: gulosa
+    spec:
+      containers:
+        - name: app
+          image: nginx:alpine
+          resources:
+            requests:
+              memory: "999Gi"    # impossível de alocar
+              cpu: "999"
+            limits:
+              memory: "999Gi"
+              cpu: "999"

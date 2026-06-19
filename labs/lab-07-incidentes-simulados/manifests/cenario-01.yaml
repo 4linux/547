@@ -1,0 +1,167 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# CENÁRIO 1 — "A aplicação subiu mas não responde"
+# O aluno recebe esse cluster "quebrado" e precisa diagnosticar usando
+# K8sGPT, HolmesGPT e kubectl-ai
+# ═══════════════════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: incidente-1
+
+---
+# Banco de dados — rodando corretamente
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: incidente-1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_PASSWORD
+              value: "senha123"
+            - name: POSTGRES_DB
+              value: "appdb"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: incidente-1
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+
+---
+# API — CrashLoopBackOff por variável de ambiente errada
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: incidente-1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: busybox:latest
+          command:
+            - sh
+            - -c
+            - |
+              echo "Conectando ao banco: $DB_HOST:$DB_PORT"
+              nc -zw3 $DB_HOST $DB_PORT || \
+                (echo "FATAL: não consegui conectar ao banco!" && exit 1)
+          env:
+            - name: DB_HOST
+              value: "postgres-svc-errado"   # hostname errado propositalmente
+            - name: DB_PORT
+              value: "5432"
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: incidente-1
+spec:
+  selector:
+    app: api
+  ports:
+    - port: 8080
+
+---
+# Frontend — ImagePullBackOff
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: incidente-1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: minha-empresa/frontend:v2.1.0   # imagem inexistente
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+
+---
+# Worker — OOMKilled por limite de memória muito baixo
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: incidente-1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - name: worker
+          image: python:3.11-slim
+          command:
+            - python
+            - -c
+            - "x = ' ' * 200 * 1024 * 1024; print('worker rodando')"
+          resources:
+            requests:
+              memory: "10Mi"
+              cpu: "50m"
+            limits:
+              memory: "15Mi"   # muito baixo — OOMKilled
+              cpu: "100m"

@@ -1,0 +1,128 @@
+# ─── Namespace ────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab-kube-copilot
+
+---
+# ─── Pod inseguro: rodando como root, sem limites de recursos ─────────────────
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-inseguro
+  namespace: lab-kube-copilot
+  labels:
+    app: inseguro
+    auditoria: seguranca
+spec:
+  containers:
+    - name: app
+      image: nginx:latest        # tag latest — má prática
+      securityContext:
+        runAsUser: 0             # rodando como root (uid 0)
+        privileged: true         # modo privilegiado
+        allowPrivilegeEscalation: true
+      # sem resources definidos — má prática
+      # sem readinessProbe — má prática
+      # sem livenessProbe — má prática
+
+---
+# ─── Deployment com boas práticas (referência para comparação) ────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-segura
+  namespace: lab-kube-copilot
+  labels:
+    app: segura
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: segura
+  template:
+    metadata:
+      labels:
+        app: segura
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 2000
+      containers:
+        - name: app
+          image: nginxinc/nginx-unprivileged:alpine  # imagem nginx sem root
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+---
+# ─── Pod com imagem desatualizada para scan de vulnerabilidades ───────────────
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-imagem-antiga
+  namespace: lab-kube-copilot
+  labels:
+    app: imagem-antiga
+    auditoria: vulnerabilidades
+spec:
+  containers:
+    - name: app
+      image: nginx:1.21           # versão antiga com CVEs conhecidos
+      resources:
+        requests:
+          memory: "32Mi"
+          cpu: "50m"
+        limits:
+          memory: "64Mi"
+          cpu: "100m"
+
+---
+# ─── Deployment sem configurações de segurança ────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-sem-seguranca
+  namespace: lab-kube-copilot
+  labels:
+    auditoria: boas-praticas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sem-seguranca
+  template:
+    metadata:
+      labels:
+        app: sem-seguranca
+    spec:
+      containers:
+        - name: app
+          image: python:3.9       # imagem pesada, sem versão patch, sem alpine
+          command: ["python", "-m", "http.server", "8080"]
+          # sem securityContext
+          # sem resources
+          # sem probes

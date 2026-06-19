@@ -1,0 +1,142 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# CENÁRIO 2 — "O deploy foi feito mas nada funciona"
+# Falhas de RBAC, PVC Pending e Liveness probe mal configurada
+# ═══════════════════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: incidente-2
+
+---
+# ServiceAccount sem permissões
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-service-account
+  namespace: incidente-2
+
+---
+# Job que precisa listar ConfigMaps mas não tem permissão
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-configuracao
+  namespace: incidente-2
+spec:
+  template:
+    spec:
+      serviceAccountName: app-service-account
+      restartPolicy: Never
+      containers:
+        - name: configurador
+          image: bitnami/kubectl:latest
+          command:
+            - kubectl
+            - get
+            - configmaps
+            - -n
+            - incidente-2
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+
+---
+# PVC que nunca vai bound (StorageClass inexistente)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dados-app
+  namespace: incidente-2
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: premium-ssd   # StorageClass inexistente
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# App que depende do PVC — fica Pending
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-com-dados
+  namespace: incidente-2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: com-dados
+  template:
+    metadata:
+      labels:
+        app: com-dados
+    spec:
+      containers:
+        - name: app
+          image: nginx:alpine
+          volumeMounts:
+            - mountPath: "/dados"
+              name: dados
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+      volumes:
+        - name: dados
+          persistentVolumeClaim:
+            claimName: dados-app
+
+---
+# App com Liveness probe apontando para endpoint errado
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-probe-errada
+  namespace: incidente-2
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: probe-errada
+  template:
+    metadata:
+      labels:
+        app: probe-errada
+    spec:
+      containers:
+        - name: app
+          image: nginx:alpine
+          livenessProbe:
+            httpGet:
+              path: /healthz    # endpoint inexistente no nginx
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 2
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+
+---
+# ConfigMap com configuração errada
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: incidente-2
+data:
+  DATABASE_URL: "postgres://user:senha@db-host-errado:5432/db"
+  REDIS_URL: "redis://redis-host-errado:6379"

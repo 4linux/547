@@ -1,0 +1,193 @@
+# ─── Namespace ────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab-falhas
+
+---
+# ─── Falha 1: Imagem inexistente (ImagePullBackOff) ───────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-imagem-invalida
+  namespace: lab-falhas
+  labels:
+    falha: imagepullbackoff
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: app-imagem-invalida
+  template:
+    metadata:
+      labels:
+        app: app-imagem-invalida
+    spec:
+      containers:
+        - name: app
+          image: minha-empresa/app-inexistente:v99.9.9
+          ports:
+            - containerPort: 8080
+
+---
+# ─── Falha 2: CrashLoopBackOff (container termina imediatamente) ──────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-crash
+  namespace: lab-falhas
+  labels:
+    falha: crashloopbackoff
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-crash
+  template:
+    metadata:
+      labels:
+        app: app-crash
+    spec:
+      containers:
+        - name: app
+          image: busybox:latest
+          command: ["sh", "-c", "echo 'iniciando...'; exit 1"]
+
+---
+# ─── Falha 3: OOMKilled (limite de memória muito baixo) ───────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-oom
+  namespace: lab-falhas
+  labels:
+    falha: oomkilled
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-oom
+  template:
+    metadata:
+      labels:
+        app: app-oom
+    spec:
+      containers:
+        - name: app
+          image: python:3.11-slim
+          command: ["python", "-c", "x = ' ' * 500 * 1024 * 1024"]
+          resources:
+            limits:
+              memory: "10Mi"
+            requests:
+              memory: "5Mi"
+
+---
+# ─── Falha 4: Service apontando para selector errado ──────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-backend
+  namespace: lab-falhas
+  labels:
+    falha: service-selector-errado
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: app
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-backend
+  namespace: lab-falhas
+spec:
+  selector:
+    app: backend-errado   # selector errado propositalmente
+  ports:
+    - port: 80
+      targetPort: 80
+
+---
+# ─── Falha 5: PVC sem StorageClass (Pending) ──────────────────────────────────
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-sem-storage
+  namespace: lab-falhas
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: storage-class-inexistente
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-com-pvc
+  namespace: lab-falhas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-com-pvc
+  template:
+    metadata:
+      labels:
+        app: app-com-pvc
+    spec:
+      containers:
+        - name: app
+          image: nginx:alpine
+          volumeMounts:
+            - mountPath: "/data"
+              name: dados
+      volumes:
+        - name: dados
+          persistentVolumeClaim:
+            claimName: pvc-sem-storage
+
+---
+# ─── Falha 6: Liveness probe mal configurada ──────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-probe-errada
+  namespace: lab-falhas
+  labels:
+    falha: liveness-probe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-probe-errada
+  template:
+    metadata:
+      labels:
+        app: app-probe-errada
+    spec:
+      containers:
+        - name: app
+          image: nginx:alpine
+          livenessProbe:
+            httpGet:
+              path: /healthz   # endpoint inexistente no nginx
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 2

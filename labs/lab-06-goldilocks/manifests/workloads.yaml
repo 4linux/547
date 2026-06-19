@@ -1,0 +1,121 @@
+# ─── Namespace habilitado para o Goldilocks ───────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab-goldilocks
+  labels:
+    goldilocks.fairwinds.com/enabled: "true"   # habilita análise do Goldilocks
+
+---
+# ─── App superprovisionada (resources muito acima do necessário) ───────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-superprovisionada
+  namespace: lab-goldilocks
+  labels:
+    cenario: superprovisionado
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: superprovisionada
+  template:
+    metadata:
+      labels:
+        app: superprovisionada
+    spec:
+      containers:
+        - name: app
+          image: nginx:alpine
+          resources:
+            requests:
+              memory: "512Mi"   # muito acima do necessário
+              cpu: "500m"       # muito acima do necessário
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+
+---
+# ─── App subprovisionada (resources abaixo do necessário) ─────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-subprovisionada
+  namespace: lab-goldilocks
+  labels:
+    cenario: subprovisionado
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: subprovisionada
+  template:
+    metadata:
+      labels:
+        app: subprovisionada
+    spec:
+      containers:
+        - name: app
+          image: nginx:alpine
+          resources:
+            requests:
+              memory: "1Mi"    # muito abaixo — pode causar OOMKilled
+              cpu: "1m"        # muito abaixo — pode causar throttling
+            limits:
+              memory: "2Mi"
+              cpu: "2m"
+
+---
+# ─── App sem resources definidos ──────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-sem-resources
+  namespace: lab-goldilocks
+  labels:
+    cenario: sem-resources
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sem-resources
+  template:
+    metadata:
+      labels:
+        app: sem-resources
+    spec:
+      containers:
+        - name: app
+          image: nginx:alpine
+          # sem resources — pior prática
+
+---
+# ─── App bem dimensionada (referência) ───────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-bem-dimensionada
+  namespace: lab-goldilocks
+  labels:
+    cenario: bem-dimensionado
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bem-dimensionada
+  template:
+    metadata:
+      labels:
+        app: bem-dimensionada
+    spec:
+      containers:
+        - name: app
+          image: nginx:alpine
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"

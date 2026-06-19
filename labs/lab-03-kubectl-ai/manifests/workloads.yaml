@@ -1,0 +1,134 @@
+# ─── Namespace ────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab-kubectl-ai
+
+---
+# ─── Deployment nginx ─────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: lab-kubectl-ai
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+
+---
+# ─── Service nginx ────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  namespace: lab-kubectl-ai
+spec:
+  selector:
+    app: nginx
+  ports:
+    - port: 80
+      targetPort: 80
+
+---
+# ─── Deployment com falha (para troubleshooting) ──────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-falha
+  namespace: lab-kubectl-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: falha
+  template:
+    metadata:
+      labels:
+        app: falha
+    spec:
+      containers:
+        - name: app
+          image: busybox:latest
+          command: ["sh", "-c", "echo 'erro intencional'; exit 1"]
+          resources:
+            requests:
+              memory: "16Mi"
+              cpu: "25m"
+            limits:
+              memory: "32Mi"
+              cpu: "50m"
+
+---
+# ─── ConfigMap de exemplo ─────────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: lab-kubectl-ai
+data:
+  ENV: "development"
+  LOG_LEVEL: "debug"
+  APP_PORT: "8080"
+
+---
+# ─── Deployment redis ─────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+  namespace: lab-kubectl-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+
+---
+# ─── Service redis ────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: lab-kubectl-ai
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379

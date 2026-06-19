@@ -1,0 +1,6 @@
+.vagrant/
+*.env
+.env*
+*_api_key*
+*.tfstate
+*.tfstate.backup
