@@ -1,5 +1,5 @@
 # Lab 06 — Goldilocks + IA: Otimização de Resources Kubernetes
-### Curso 541 — IA no Universo Kubernetes
+### Curso 547 — IA no Universo Kubernetes
 
 ---
 

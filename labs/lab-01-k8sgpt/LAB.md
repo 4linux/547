@@ -1,5 +1,5 @@
 # Lab 01 — K8sGPT: Diagnóstico Inteligente de Clusters
-### Curso 541 — IA no Universo Kubernetes
+### Curso 547 — IA no Universo Kubernetes
 
 ---
 
@@ -152,7 +152,7 @@ k8sgpt analyze --namespace lab-falhas --explain --backend openai --language port
 
 Analisar apenas Pods:
 ```bash
-k8sgpt analyze --namespace lab-falhas --explain --filter Pod -backend openai --language portuguese
+k8sgpt analyze --namespace lab-falhas --explain --filter Pod --backend openai --language portuguese
 ```
 
 Analisar apenas Services:

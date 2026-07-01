@@ -1,5 +1,5 @@
 # Lab 07 — Incidentes Simulados: Lab Integrador
-### Curso 541 — IA no Universo Kubernetes
+### Curso 547 — IA no Universo Kubernetes
 
 ---
 

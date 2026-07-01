@@ -1,5 +1,5 @@
 # Lab 04 — Kube-copilot: Auditoria e Boas Práticas com IA
-### Curso 541 — IA no Universo Kubernetes
+### Curso 547 — IA no Universo Kubernetes
 
 ---
 
@@ -66,7 +66,7 @@ trivy --version
 
 ```bash
 export OPENAI_API_KEY=$OPENROUTER_API_KEY
-export OPENAI_API_BASE="https://openrouter.ai/api/v1"
+export OPENAI_BASE_URL="https://openrouter.ai/api/v1"
 ```
 
 ### 2.2 Configuração com OpenAI (pago)
@@ -100,8 +100,11 @@ kubectl apply -f manifests/auditoria.yaml
 ### 3.3 Verificando os recursos
 
 ```bash
-kubectl get all 
+kubectl get pods
 ```
+
+> Os recursos são criados no namespace `default` — o kube-copilot funciona
+> de forma mais confiável neste namespace.
 
 **Recursos criados:**
 
@@ -119,7 +122,7 @@ kubectl get all
 ### 4.1 Auditoria completa de um Pod (com Trivy)
 
 ```bash
-kube-copilot audit pod-inseguro lab-kube-copilot --model nvidia/nemotron-3-super-120b-a12b:free --verbose
+kube-copilot audit pod-inseguro default --model nvidia/nemotron-3-super-120b-a12b:free --verbose
 ```
 
 > O comando `audit` combina análise estática do manifest com scan de vulnerabilidades
@@ -165,7 +168,7 @@ kube-copilot execute \
 ### 5.1 Diagnosticando um pod
 
 ```bash
-kube-copilot diagnose pod-inseguro lab-kube-copilot --model nvidia/nemotron-3-super-120b-a12b:free --verbose
+kube-copilot diagnose pod-inseguro default --model nvidia/nemotron-3-super-120b-a12b:free --verbose
 ```
 
 Para diagnóstico em português:
@@ -261,9 +264,11 @@ readinessProbe:
 ## Parte 8 — Limpeza do Ambiente
 
 ```bash
-kubectl delete namespace default
-kind delete cluster --name k8s-ai-labs
+kubectl delete pod pod-inseguro pod-imagem-antiga
+kubectl delete deployment app-segura app-sem-seguranca
 ```
+
+> Não derrube o cluster — ele será reutilizado nos próximos labs.
 
 ---
 

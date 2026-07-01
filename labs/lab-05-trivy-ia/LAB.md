@@ -1,5 +1,5 @@
 # Lab 05 — Trivy + IA: Segurança de Containers com Análise Inteligente
-### Curso 541 — IA no Universo Kubernetes
+### Curso 547 — IA no Universo Kubernetes
 
 ---
 

@@ -1,5 +1,5 @@
 # Lab 02 — HolmesGPT: Root Cause Analysis com IA
-### Curso 541 — IA no Universo Kubernetes
+### Curso 547 — IA no Universo Kubernetes
 
 ---
 
@@ -71,21 +71,23 @@ brew install holmesgpt
 ### 2.1 Configuração recomendada para o lab (gpt-4o-mini)
 
 ```bash
-export OPENAI_API_KEY="sua_chave_openai"
+export OPENAI_API_KEY="sk-sua-chave-openai"
+echo 'export OPENAI_API_KEY="sk-sua-chave-openai"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 Crie o arquivo de configuração:
 
 ```bash
+mkdir -p ~/.holmes
 cat > ~/.holmes/config.yaml << EOF
-model: openai/gpt-4o-mini
-api_key: ${OPENROUTER_API_KEY}
-api_base: https://openrouter.ai/api/v1
+model: gpt-4o-mini
+api_key: $OPENAI_API_KEY
 EOF
 ```
 
-> **Dica:** Adicione o export no seu `~/.bashrc` ou `~/.zshrc`
-> para não precisar repetir a cada sessão.
+> **Dica:** O `~/.holmes/config.yaml` é lido automaticamente pelo HolmesGPT.
+> Não é necessário passar flags em cada comando.
 
 ### 2.2 Alternativas de modelo
 

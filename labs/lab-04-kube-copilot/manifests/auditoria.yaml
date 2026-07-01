@@ -1,26 +1,19 @@
-# ─── Namespace ────────────────────────────────────────────────────────────────
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: lab-kube-copilot
-
----
 # ─── Pod inseguro: rodando como root, sem limites de recursos ─────────────────
 apiVersion: v1
 kind: Pod
 metadata:
   name: pod-inseguro
-  namespace: lab-kube-copilot
+  namespace: default
   labels:
     app: inseguro
     auditoria: seguranca
 spec:
   containers:
     - name: app
-      image: nginx:latest        # tag latest — má prática
+      image: nginx:1.21             # versão antiga com CVEs conhecidos + tag não latest
       securityContext:
-        runAsUser: 0             # rodando como root (uid 0)
-        privileged: true         # modo privilegiado
+        runAsUser: 0                # rodando como root (uid 0)
+        privileged: true            # modo privilegiado
         allowPrivilegeEscalation: true
       # sem resources definidos — má prática
       # sem readinessProbe — má prática
@@ -32,7 +25,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: app-segura
-  namespace: lab-kube-copilot
+  namespace: default
   labels:
     app: segura
 spec:
@@ -84,14 +77,14 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: pod-imagem-antiga
-  namespace: lab-kube-copilot
+  namespace: default
   labels:
     app: imagem-antiga
     auditoria: vulnerabilidades
 spec:
   containers:
     - name: app
-      image: nginx:1.21           # versão antiga com CVEs conhecidos
+      image: nginx:1.21             # versão antiga com CVEs conhecidos
       resources:
         requests:
           memory: "32Mi"
@@ -106,7 +99,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: app-sem-seguranca
-  namespace: lab-kube-copilot
+  namespace: default
   labels:
     auditoria: boas-praticas
 spec:
@@ -121,7 +114,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: python:3.9       # imagem pesada, sem versão patch, sem alpine
+          image: python:3.9         # imagem pesada, sem versão patch, sem alpine
           command: ["python", "-m", "http.server", "8080"]
           # sem securityContext
           # sem resources

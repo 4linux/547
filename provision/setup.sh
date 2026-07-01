@@ -129,10 +129,10 @@ step "Instalando k8sgpt"
 if command -v k8sgpt &>/dev/null; then
   ok "k8sgpt já instalado"
 else
-  curl -sSLO https://github.com/k8sgpt-ai/k8sgpt/releases/latest/download/k8sgpt_linux_amd64.tar.gz
-  tar -xzf k8sgpt_linux_amd64.tar.gz
+  curl -sSLO https://github.com/k8sgpt-ai/k8sgpt/releases/latest/download/k8sgpt_Linux_x86_64.tar.gz
+  tar -xzf k8sgpt_Linux_x86_64.tar.gz
   mv k8sgpt /usr/local/bin/
-  rm -f k8sgpt_linux_amd64.tar.gz
+  rm -f k8sgpt_Linux_x86_64.tar.gz
   ok "k8sgpt instalado"
 fi
 

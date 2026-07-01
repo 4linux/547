@@ -1,5 +1,5 @@
 # Lab 03 — kubectl-ai: Kubernetes por Linguagem Natural
-### Curso 541 — IA no Universo Kubernetes
+### Curso 547 — IA no Universo Kubernetes
 
 ---
 
